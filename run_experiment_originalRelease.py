@@ -73,17 +73,10 @@ class Experiment:
         self.sqlite3 = self.find_sqlite3_executable()
         self.feedback_enabled = feedback_enabled
         self.clean_database = clean_database
-
+      
     def find_sqlite3_executable(self):
-        # Try to find sqlite3 in the current working directory or the script's directory
-        script_directory = os.path.dirname(os.path.abspath(__file__))
-        script_sqlite3_path = os.path.join(script_directory, "sqlite3")
-
-        if os.path.exists(script_sqlite3_path):
-            return script_sqlite3_path
-
-        # If sqlite3 is not found in the script's directory or CWD, you can add additional paths or customize this logic.
-        raise FileNotFoundError("sqlite3 executable not found. Please set the path manually.")
+    # 直接返回 sqlite3-asan 的绝对路径
+        return "/root/system/sqlite3-asan"
 
     def remove_file_if_exists(self, file_path):
         if os.path.isfile(file_path):  # Check if the file exists
@@ -104,8 +97,18 @@ class Experiment:
         # Replace NULL bytes to prevent ValueError exceptions
         sqlcmd = sqlcmd.replace('\x00', '_')
         command = f'echo "{sqlcmd}" | {self.sqlite3} {self.db_file}'
-        process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    
+        process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         output, error = process.communicate()
+
+    # Check if the process ended with an error
+        if process.returncode != 0:
+            if error:
+                print(f'[ASan Error] {error.decode()}')
+            else:
+                print('[Unknown Error] An unknown error occurred during execution.')
+        else:
+            print(f'[SQL Output] {output.decode()}')
 
 
     def get_coverage(self):
